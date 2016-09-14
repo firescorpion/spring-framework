@@ -21,10 +21,15 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.reactivestreams.Publisher;
 
+import org.springframework.core.Conventions;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
@@ -127,46 +132,67 @@ class DefaultResponseBuilder implements Response.BodyBuilder {
 
 	@Override
 	public Response<Void> build() {
-		return new EmptyResponse(this.statusCode, this.headers);
+		return DefaultResponses.empty(this.statusCode, this.headers);
 	}
 
 	@Override
 	public <T extends Publisher<Void>> Response<T> build(T voidPublisher) {
 		Assert.notNull(voidPublisher, "'voidPublisher' must not be null");
-		return new VoidPublisherResponse<>(this.statusCode, this.headers, voidPublisher);
+		return DefaultResponses.empty(this.statusCode, this.headers, voidPublisher);
 	}
 
 	@Override
 	public <T> Response<T> body(T body) {
 		Assert.notNull(body, "'body' must not be null");
-		return new BodyResponse<>(this.statusCode, this.headers, body);
+		return DefaultResponses.body(this.statusCode, this.headers, body);
 	}
 
 	@Override
 	public <T, S extends Publisher<T>> Response<S> stream(S publisher, Class<T> elementClass) {
 		Assert.notNull(publisher, "'publisher' must not be null");
 		Assert.notNull(elementClass, "'elementClass' must not be null");
-		return new PublisherResponse<>(this.statusCode, this.headers, publisher, elementClass);
+		return DefaultResponses.stream(this.statusCode, this.headers, publisher, elementClass);
 	}
 
 	@Override
 	public Response<Resource> resource(Resource resource) {
 		Assert.notNull(resource, "'resource' must not be null");
-		return new ResourceResponse(this.statusCode, this.headers, resource);
+		return DefaultResponses.resource(this.statusCode, this.headers, resource);
 	}
 
 	@Override
 	public <T, S extends Publisher<ServerSentEvent<T>>> Response<S> sse(S eventsPublisher) {
 		Assert.notNull(eventsPublisher, "'eventsPublisher' must not be null");
-		return ServerSentEventResponse
-				.fromSseEvents(this.statusCode, this.headers, eventsPublisher);
+		return DefaultResponses.sse(this.statusCode, this.headers, eventsPublisher);
 	}
 
 	@Override
 	public <T, S extends Publisher<T>> Response<S> sse(S eventsPublisher, Class<T> eventClass) {
 		Assert.notNull(eventsPublisher, "'eventsPublisher' must not be null");
 		Assert.notNull(eventClass, "'eventClass' must not be null");
-		return ServerSentEventResponse
-				.fromPublisher(this.statusCode, this.headers, eventsPublisher, eventClass);
+		return DefaultResponses.sse(this.statusCode, this.headers, eventsPublisher, eventClass);
 	}
+
+	@Override
+	public Response<Rendering> render(String name, Object... modelAttributes) {
+		Map<String, Object> modelMap = Arrays.stream(modelAttributes)
+				.filter(o -> !isEmptyCollection(o))
+				.collect(Collectors.toMap(Conventions::getVariableName, o -> o));
+		return DefaultResponses.render(this.statusCode, this.headers, name, modelMap);
+	}
+
+	private static boolean isEmptyCollection(Object o) {
+		return o instanceof Collection && ((Collection<?>) o).isEmpty();
+	}
+
+	@Override
+	public Response<Rendering> render(String name, Map<String, ?> model) {
+		Assert.hasLength(name, "'name' must not be empty");
+		Map<String, Object> modelMap = new LinkedHashMap<>();
+		if (model != null) {
+			modelMap.putAll(model);
+		}
+		return DefaultResponses.render(this.statusCode, this.headers, name, modelMap);
+	}
+
 }

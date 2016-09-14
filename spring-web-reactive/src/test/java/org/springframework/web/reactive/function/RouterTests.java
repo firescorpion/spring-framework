@@ -18,6 +18,7 @@ package org.springframework.web.reactive.function;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.Test;
@@ -36,15 +37,11 @@ import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.server.reactive.HttpHandler;
 import org.springframework.mock.http.server.reactive.test.MockServerHttpRequest;
 import org.springframework.mock.http.server.reactive.test.MockServerHttpResponse;
+import org.springframework.web.reactive.result.view.ViewResolver;
 import org.springframework.web.server.ServerWebExchange;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
 /**
  * @author Arjen Poutsma
@@ -136,6 +133,8 @@ public class RouterTests {
 				() -> Collections.<HttpMessageReader<?>>emptyList().stream());
 		when(configuration.messageWriters()).thenReturn(
 				() -> Collections.<HttpMessageWriter<?>>emptyList().stream());
+		when(configuration.viewResolvers()).thenReturn(
+				() -> Collections.<ViewResolver>emptyList().stream());
 
 		HttpHandler result = Router.toHttpHandler(routingFunction, configuration);
 		assertNotNull(result);
@@ -163,7 +162,7 @@ public class RouterTests {
 	private static class DummyMessageWriter implements HttpMessageWriter<Object> {
 
 		@Override
-		public boolean canWrite(ResolvableType type, MediaType mediaType) {
+		public boolean canWrite(ResolvableType elementType, MediaType mediaType, Map<String, Object> hints) {
 			return false;
 		}
 
@@ -173,9 +172,10 @@ public class RouterTests {
 		}
 
 		@Override
-		public Mono<Void> write(Publisher<?> inputStream, ResolvableType type,
-				MediaType contentType,
-				ReactiveHttpOutputMessage outputMessage) {
+		public Mono<Void> write(Publisher<?> inputStream, ResolvableType elementType,
+				MediaType mediaType,
+				ReactiveHttpOutputMessage outputMessage,
+				Map<String, Object> hints) {
 			return Mono.empty();
 		}
 	}
@@ -183,7 +183,7 @@ public class RouterTests {
 	private static class DummyMessageReader implements HttpMessageReader<Object> {
 
 		@Override
-		public boolean canRead(ResolvableType type, MediaType mediaType) {
+		public boolean canRead(ResolvableType elementType, MediaType mediaType, Map<String, Object> hints) {
 			return false;
 		}
 
@@ -193,12 +193,14 @@ public class RouterTests {
 		}
 
 		@Override
-		public Flux<Object> read(ResolvableType type, ReactiveHttpInputMessage inputMessage) {
+		public Flux<Object> read(ResolvableType elementType, ReactiveHttpInputMessage inputMessage,
+				Map<String, Object> hints) {
 			return Flux.empty();
 		}
 
 		@Override
-		public Mono<Object> readMono(ResolvableType type, ReactiveHttpInputMessage inputMessage) {
+		public Mono<Object> readMono(ResolvableType elementType, ReactiveHttpInputMessage inputMessage,
+				Map<String, Object> hints) {
 			return Mono.empty();
 		}
 	}

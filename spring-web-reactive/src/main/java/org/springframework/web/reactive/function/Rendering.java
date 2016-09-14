@@ -16,36 +16,25 @@
 
 package org.springframework.web.reactive.function;
 
-import reactor.core.publisher.Mono;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.web.server.ServerWebExchange;
+import java.util.Map;
 
 /**
+ * Represents a template rendering, based on a {@code String} name and a model {@code Map}.
+ *
  * @author Arjen Poutsma
+ * @since 5.0
  */
-class EmptyResponse extends AbstractResponse<Void> {
+public interface Rendering {
 
-	public EmptyResponse(int statusCode, HttpHeaders headers) {
-		super(statusCode, addContentLength(headers));
-	}
+	/**
+	 * Return the name of the template to be rendered.
+	 */
+	String name();
 
-	private static HttpHeaders addContentLength(HttpHeaders headers) {
-		if (headers.getContentLength() == -1) {
-			headers.setContentLength(0);
-		}
-		return headers;
-	}
+	/**
+	 * Return the unmodifiable model map.
+	 */
+	Map<String, Object> model();
 
-	@Override
-	public Void body() {
-		return null;
-	}
-
-	@Override
-	public Mono<Void> writeTo(ServerWebExchange exchange) {
-		writeStatusAndHeaders(exchange);
-		return exchange.getResponse().setComplete();
-	}
 
 }

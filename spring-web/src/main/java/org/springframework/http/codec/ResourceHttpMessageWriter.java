@@ -18,6 +18,7 @@ package org.springframework.http.codec;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 
 import org.reactivestreams.Publisher;
@@ -58,33 +59,33 @@ public class ResourceHttpMessageWriter extends EncoderHttpMessageWriter<Resource
 
 
 	@Override
-	public Mono<Void> write(Publisher<? extends Resource> inputStream, ResolvableType type,
-			MediaType contentType, ReactiveHttpOutputMessage outputMessage) {
+	public Mono<Void> write(Publisher<? extends Resource> inputStream, ResolvableType elementType,
+			MediaType mediaType, ReactiveHttpOutputMessage outputMessage, Map<String, Object> hints) {
 
 		return Mono.from(Flux.from(inputStream).
 				take(1).
 				concatMap(resource -> {
 					HttpHeaders headers = outputMessage.getHeaders();
-					addHeaders(headers, resource, contentType);
-					return writeContent(resource, type, outputMessage);
+					addHeaders(headers, resource, mediaType);
+					return writeContent(resource, elementType, outputMessage, hints);
 				}));
 	}
 
-	protected void addHeaders(HttpHeaders headers, Resource resource, MediaType contentType) {
+	protected void addHeaders(HttpHeaders headers, Resource resource, MediaType mediaType) {
 		if (headers.getContentType() == null) {
-			if (contentType == null || !contentType.isConcrete() ||
-					MediaType.APPLICATION_OCTET_STREAM.equals(contentType)) {
-				contentType = Optional.ofNullable(MediaTypeFactory.getMediaType(resource)).
+			if (mediaType == null || !mediaType.isConcrete() ||
+					MediaType.APPLICATION_OCTET_STREAM.equals(mediaType)) {
+				mediaType = Optional.ofNullable(MediaTypeFactory.getMediaType(resource)).
 						orElse(MediaType.APPLICATION_OCTET_STREAM);
 			}
-			headers.setContentType(contentType);
+			headers.setContentType(mediaType);
 		}
 		if (headers.getContentLength() < 0) {
 			contentLength(resource).ifPresent(headers::setContentLength);
 		}
 	}
 
-	private Mono<Void> writeContent(Resource resource, ResolvableType type, ReactiveHttpOutputMessage outputMessage) {
+	private Mono<Void> writeContent(Resource resource, ResolvableType type, ReactiveHttpOutputMessage outputMessage, Map<String, Object> hints) {
 		if (outputMessage instanceof ZeroCopyHttpOutputMessage) {
 			Optional<File> file = getFile(resource);
 			if (file.isPresent()) {
@@ -97,7 +98,7 @@ public class ResourceHttpMessageWriter extends EncoderHttpMessageWriter<Resource
 
 		// non-zero copy fallback, using ResourceEncoder
 		return super.write(Mono.just(resource), type,
-				outputMessage.getHeaders().getContentType(), outputMessage);
+				outputMessage.getHeaders().getContentType(), outputMessage, hints);
 	}
 
 	private static Optional<Long> contentLength(Resource resource) {
